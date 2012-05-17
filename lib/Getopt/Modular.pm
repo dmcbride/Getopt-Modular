@@ -9,11 +9,11 @@ use Scalar::Util qw(reftype looks_like_number);
 use Exception::Class
     'Getopt::Modular::Exception' => {
         description => 'Exception in commandline parsing/handling',
-        fields => [ qw(option value) ],
+        fields => [ qw(type option value) ],
     },
     'Getopt::Modular::Internal' => {
         description => 'Internal Exception in commandline parsing/handling',
-        fields => [ qw(option) ]
+        fields => [ qw(type option) ]
     };
 use Carp;
 
@@ -287,6 +287,7 @@ sub _opt
     unless (exists $self->{accept_opts}{$opt})
     {
         Getopt::Modular::Internal->throw(
+                                         type    => 'unknown-option',
                                          message => "Unknown option: $opt",
                                          option  => $opt,
                                         );
@@ -627,10 +628,12 @@ sub parseArgs
     if (not $success)
     {
         Getopt::Modular::Exception->throw(
-             message => "Bad command-line: $warnings",
-            );
+                                          message => "Bad command-line: $warnings",
+                                          type => 'getopt-long-failure',
+                                          warning => $warnings,
+                                         );
     }
-    
+
     # now validate everything that was passed in, and save it.
     for my $opt (keys %$accept)
     {
@@ -666,6 +669,7 @@ sub getOpt
     my $self = _self_or_global(shift);
     my $opt  = shift || Getopt::Modular::Exception->throw(
                                                           message => 'No option given?'
+                                                          type => 'dev-error',
                                                          );
 
     if (not exists $self->{accept_opts}{$opt})
@@ -674,6 +678,7 @@ sub getOpt
         {
             Getopt::Modular::Exception->throw(
                                               message => "No such option: $opt",
+                                              type    => 'no-such-option',
                                               option  => $opt,
                                               value   => undef,
                                              );
@@ -740,6 +745,7 @@ sub _int_val
     {
         Getopt::Modular::Exception->throw(
                                           message => "Trying to set '$opt' (an integer-only parameter) to '$val'",
+                                          type    => 'set-int-failure',
                                           option  => $opt,
                                           value   => $val
                                          );
@@ -754,6 +760,7 @@ sub _real_val
     {
         Getopt::Modular::Exception->throw(
                                           message => "Trying to set '$opt' (a real-number parameter) to '$val'",
+                                          type    => 'set-real-failure',
                                           option  => $opt,
                                           value   => $val
                                          );
@@ -818,6 +825,7 @@ sub _setOpt
             }
             Getopt::Modular::Exception->throw(
                                               message => "'$val' is an invalid value for $opt",
+                                              type    => 'validate-failure',
                                               option  => $opt,
                                               value   => $val,
                                              );
@@ -847,9 +855,11 @@ sub setOpt
         if (ref $_[0])
         {
             Getopt::Modular::Exception->throw(
+                                              type    => 'wrong-type',
                                               message => "Wrong type of data for $opt.  Expected: " .
                                               ($self->_getType($opt) || 'SCALAR') .
                                               " got: " . (reftype $_[0] || 'SCALAR'),
+                                              expected => ($self->_getType($opt) || 'SCALAR'),
                                               opt => $opt,
                                               value => $_[0],
                                              )
@@ -1035,6 +1045,58 @@ sub getHelpWrap
     $tb;
 }
 
+=head1 EXCEPTIONS
+
+Various exceptions can be thrown of either C<Getopt::Modular::Exception> or
+C<Getopt::Modular::Internal> types.  All exceptions have a "type" field which
+you can retrieve with the C<-E<gt>type> method (see L<Exception::Class>).  This
+is intended to facilitate translations.  Rather than using the exception message
+contained in this object, you can substitute with your own translated text.
+
+Exception types:
+
+=over 4
+
+=item unknown-option
+
+Internal error: an option was used, for example as one of the aliases, that didn't
+resolve.  I don't think this should happen.
+
+=item getopt-long-failure
+
+Getopt::Long returned a failure.  The warnings produced by Getopt::Long have been
+captured into the warnings of this exception (C<$e-E<gt>warnings>), but they are
+likely also English-only.
+
+=item dev-error
+
+getOpt didn't get any parameters.  Probably doesn't need translating unless
+you are doing something odd (but has a type so you I<can> do something odd).
+
+=item no-such-option
+
+Strict mode is on, and you asked getOpt for an option that G::M doesn't
+know about.
+
+=item set-int-failure
+
+Called setOpt on an integer value (types +, i, or o), without giving an integer.
+
+=item set-real-failure
+
+Called setOpt on an real value (type f), without giving a number.
+
+=item validate-failure
+
+The validation for this value failed.  The option and value fields are filled in.
+
+=item wrong-type
+
+When calling setOpt, trying to set a value of the wrong type (a hash reference to
+a list, for example)
+
+=back
+
 =head1 AUTHOR
 
 Darin McBride, C<< <dmcbride at cpan.org> >>
@@ -1044,9 +1106,6 @@ Darin McBride, C<< <dmcbride at cpan.org> >>
 Please report any bugs or feature requests to C<bug-getopt-modular at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Getopt-Modular>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
-
-
-
 
 =head1 SUPPORT
 
@@ -1058,10 +1117,6 @@ You can find documentation for this module with the perldoc command.
 You can also look for information at:
 
 =over 4
-
-=item * SourceForge
-
-L<http://sourceforget.net/projects/getopt-modular>
 
 =item * RT: CPAN's request tracker
 
