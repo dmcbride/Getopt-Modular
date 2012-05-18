@@ -1,5 +1,7 @@
 package Getopt::Modular;
 
+#ABSTRACT: Modular access to Getopt::Long
+
 use warnings;
 use strict;
 
@@ -9,26 +11,13 @@ use Scalar::Util qw(reftype looks_like_number);
 use Exception::Class
     'Getopt::Modular::Exception' => {
         description => 'Exception in commandline parsing/handling',
-        fields => [ qw(type option value) ],
+        fields => [ qw(type option value warning) ],
     },
     'Getopt::Modular::Internal' => {
         description => 'Internal Exception in commandline parsing/handling',
         fields => [ qw(type option) ]
     };
 use Carp;
-
-=head1 NAME
-
-Getopt::Modular - Modular access to Getopt::Long
-
-=head1 VERSION
-
-Version 0.07
-
-=cut
-
-our $VERSION = '0.07';
-
 
 =head1 SYNOPSIS
 
@@ -496,6 +485,16 @@ choice.
 If this key is not present, then anything Getopt::Long accepts (due to the specification)
 will be accepted as valid.
 
+=item valid_values
+
+If the list of valid values is limited and finite, it may be easier to
+just specify them.  Then Getopt::Modular can verify the value provided is
+in the list.  It can also use the list in the help.
+
+This parameter needs to be either an array ref, or a CODE ref that generates
+the list (lazy).  Note that the CODE ref will only be called once, so don't
+count on it being dynamic, too.
+
 =item mandatory
 
 If this is set to a true value, then during parameter validation, this option
@@ -668,7 +667,7 @@ sub getOpt
 {
     my $self = _self_or_global(shift);
     my $opt  = shift || Getopt::Modular::Exception->throw(
-                                                          message => 'No option given?'
+                                                          message => 'No option given?',
                                                           type => 'dev-error',
                                                          );
 
@@ -832,6 +831,38 @@ sub _setOpt
         }
     }
 
+    if (my $valid = $self->_opt($opt)->{valid_values})
+    {
+        if (ref $valid eq 'CODE')
+        {
+            my @valid = $valid->();
+            $valid = \@valid;
+            $self->_opt($opt)->{valid_values} = $valid; # cache for next time.
+        }
+
+        if (ref $valid eq 'ARRAY')
+        {
+            unless (any { $_ eq $val } @$valid)
+            {
+                Getopt::Modular::Exception->throw(
+                                                  message => "'$val' is an invalid value for $opt",
+                                                  type    => 'validate-failure',
+                                                  option  => $opt,
+                                                  value   => $val,
+                                                  valid   => $valid,
+                                                 );
+            }
+        }
+        else
+        {
+            Getopt::Modular::Exception->throw(
+                                              message => "'valid_values requires either an array ref or a code ref to generate the list of valid values.",
+                                              type => 'valid-values-error',
+                                              option => $opt,
+                                             );
+        }
+    }
+
     $self->{options}{$opt} = $val;
 }
 
@@ -959,6 +990,18 @@ sub getHelpRaw
                 $opt{default} = $bools->[$opt{default} ? 1 : 0];
             }
         };
+
+        # determine valid values.
+        eval {
+            $opt{valid_values} = $self->_opt($param)->{valid_values};
+
+            #local $SIG{__WARN__} = 'IGNORE';
+            no warnings;
+            # if it's not a code ref, the eval will exit, but we'll already
+            # have what we want anyway.
+            $opt{valid_values} = $opt{valid_values}->();
+        };
+
         push @raw, \%opt;
     }
     return @raw;
@@ -984,6 +1027,7 @@ sub getHelp
         my $txt = $param->{help};
         no warnings 'uninitialized';
         $txt .= "\n Current Value: [" . $param->{default} . "]" if exists $param->{default};
+        $txt .= "\n Valid values: [" . join (',', @{$param->{valid_values}}) . "]" if $param->{valid_values};
 
         $tb->add($opt, $txt);
     }
@@ -1017,6 +1061,7 @@ sub getHelpWrap
         my $txt = shift;
         no warnings 'uninitialized';
         $txt .= "\n Current Value: [" . $param->{default} . "]" if exists $param->{default};
+        $txt .= "\n Valid values: [" . join (',', @{$param->{valid_values}}) . "]" if $param->{valid_values};
 
         $tb->add($opt, $txt);
     };
@@ -1072,6 +1117,10 @@ likely also English-only.
 
 getOpt didn't get any parameters.  Probably doesn't need translating unless
 you are doing something odd (but has a type so you I<can> do something odd).
+
+=item valid-values-error
+
+The valid_values key for an option wasn't either an array ref or a code ref.
 
 =item no-such-option
 
@@ -1142,7 +1191,7 @@ L<http://search.cpan.org/dist/Getopt-Modular>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008, 2011 Darin McBride, all rights reserved.
+Copyright 2008, 2012 Darin McBride, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
