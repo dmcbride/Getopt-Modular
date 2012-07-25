@@ -1097,7 +1097,7 @@ Examples:
 sub getHelpWrap
 {
     my $self = _self_or_global(\@_);
-    my $width = @_ && not ref $_[0] ? shift : 80;
+    my $width = (@_ && not ref $_[0]) ? shift : 80;
     my $cbs = shift || {};
     my @raw = $self->getHelpRaw;
 
