@@ -13,7 +13,10 @@ GM->acceptParam(
                  'fullname|fn|f' => {
                  }
                 );
-my $secret = GM->_self_or_global();
+
+# this isn't the right way to load this, but should be a good approximate
+# test of the right way.
+my $secret = Getopt::Modular::_self_or_global(['GM']);
 is(ref $secret, 'GM', 'Check Derivation') or
     diag(Dumper $secret);
 

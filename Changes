@@ -6,6 +6,8 @@ Revision history for Getopt-Modular
         + Add valid_values option
         + getHelpWrap will use Text::WrapI18N if available, otherwise use
           Text::Wrap (core).
+        + Allow callbacks for "current value" and "valid value" strings in
+          getHelp and getHelpWrap
 
 0.07    June 3, 2011
         * Fix some doc typos, add more explanation on how defaults are dynamic

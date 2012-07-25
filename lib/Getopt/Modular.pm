@@ -29,7 +29,10 @@ Perhaps a little code snippet.
                                   foo => {
                                       default => 3,
                                       spec    => '=s',
-                                      validate => sub { 3 <= $_ && $_ <= determine_max_foo(); }
+                                      validate => sub {
+                                          3 <= $_ &&
+                                          $_ <= determine_max_foo();
+                                      }
                                   }
                                  );
     Getopt::Modular->parseArgs();
@@ -249,22 +252,31 @@ sub new {
 
 sub _self_or_global
 {
-    my $self = shift;
-    ref $self   ? $self :
-        $global ? $global :
-                  $self->new();
+    my $underscore = shift;
+    my $self = $underscore->[0];
+
+    # is it an object? use it.
+    eval { ref $self && $self->isa(__PACKAGE__) } && return shift @$underscore;
+
+    # passed in via class method?  skip it.
+    eval { not ref && $self->isa(__PACKAGE__) } && shift @$underscore;
+
+    # have global? use it.
+    $global ? $global :
+        # otherwise, create new.
+        $self->new();
 }
 
 sub _accepts_opt
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     my $opt  = shift;
     return exists $self->{accept_opts}{$opt};
 }
 
 sub _opt
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     my $opt  = shift;
     
     if (@_)
@@ -331,7 +343,7 @@ my %_known_modes = map { $_ => 1 } qw(
 
 sub setMode
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
 
     foreach my $mode (@_)
     {
@@ -361,7 +373,7 @@ Pass in two strings: the off or false value, and the on or true value.
 
 sub setBoolHelp
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     $self->{bool_strings} = [ @_[0,1] ];
 }
 
@@ -511,7 +523,7 @@ the user.
 
 sub acceptParam
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     while (@_)
     {
         my $param = shift;
@@ -585,7 +597,7 @@ will be used.
 
 sub unacceptParam
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     for my $param (@_)
     {
         $self->{unacceptable}{$param} = 1;
@@ -603,7 +615,7 @@ call parseArgs to perform the actual parsing.
 
 sub parseArgs
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
 
     # first, gather up for the call to Getopt::Long.
     my %opts;
@@ -665,7 +677,7 @@ at all when the default is 3?
 
 sub getOpt
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     my $opt  = shift || Getopt::Modular::Exception->throw(
                                                           message => 'No option given?',
                                                           type => 'dev-error',
@@ -712,7 +724,7 @@ sub getOpt
 
 sub _getType
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     my $opt  = shift;
 
     unless (exists $self->_opt($opt)->{_GMTYPE})
@@ -777,7 +789,7 @@ my %_valtypes = (
 
 sub _setOpt
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     my $opt  = shift;
     my $val  = shift;
 
@@ -880,7 +892,7 @@ exception if the value cannot be set, e.g., it is invalid.
 
 sub setOpt
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     my $opt  = shift;
     my $val  = do {
         if (ref $_[0])
@@ -945,7 +957,7 @@ want to interpret this).
 
 sub getHelpRaw
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
 
     # get the list of parameters ...
     my $accept    = $self->{accept_opts};
@@ -995,7 +1007,6 @@ sub getHelpRaw
         eval {
             $opt{valid_values} = $self->_opt($param)->{valid_values};
 
-            #local $SIG{__WARN__} = 'IGNORE';
             no warnings;
             # if it's not a code ref, the eval will exit, but we'll already
             # have what we want anyway.
@@ -1009,14 +1020,42 @@ sub getHelpRaw
 
 =head2 getHelp
 
-Returns a string representation of the above raw help.
+Returns a string representation of the above raw help.  If you need to
+translate extra strings, an extra hash-ref of callbacks will be used.  For
+example:
+
+    GM->getHelp({
+        current_value => sub {
+            lookup_string("Current value: '[_1]'", shift // '');
+        },
+        # only needed if you use the valid_value key at the moment, but
+        # could be extended later.
+        valid_values => sub {
+            lookup_string("Valid values: '[_1]'", join ',', @_);
+        },
+    });
+
+Callbacks:
+
+=over 4
+
+=item current_value
+
+Receives the current value (may be undef).
+
+=item valid_values
+
+Receives all valid values.
+
+=back
 
 =cut
 
 sub getHelp
 {
-    my $self = _self_or_global(shift);
+    my $self = _self_or_global(\@_);
     my @raw = $self->getHelpRaw;
+    my $cbs = shift || {};
 
     require Text::Table;
 
@@ -1026,8 +1065,9 @@ sub getHelp
         my $opt = join ",\n  ", @{$param->{param}};
         my $txt = $param->{help};
         no warnings 'uninitialized';
-        $txt .= "\n Current Value: [" . $param->{default} . "]" if exists $param->{default};
-        $txt .= "\n Valid values: [" . join (',', @{$param->{valid_values}}) . "]" if $param->{valid_values};
+
+        $txt .= "\n " . ($cbs->{current_value} || sub { "Current value: [". shift(). "]" })->($param->{default}) if exists $param->{default};
+        $txt .= "\n " . ($cbs->{valid_values} || sub { "Valid values: [". join(',', @_). "]" })->(@{$param->{valid_values}}) if $param->{valid_values};
 
         $tb->add($opt, $txt);
     }
@@ -1042,12 +1082,23 @@ to write.
 
 Default screen width is 80 - you can pass in the columns if you prefer.
 
+A second parameter is the same as getHelp above with callbacks for translations.
+
+Examples:
+
+    print GM->getHelpWrap(70, { ... }); # specify cols and callbacks
+    print GM->getHelpWrap({ ... }); # implicit cols (80), explicit callbacks
+    print GM->getHelpWrap(70); # implicit cols, default English text
+    print GM->getHelpWrap(); # implicit all.
+
+
 =cut
 
 sub getHelpWrap
 {
-    my $self = _self_or_global(shift);
-    my $width = @_ ? shift : 80;
+    my $self = _self_or_global(\@_);
+    my $width = @_ && not ref $_[0] ? shift : 80;
+    my $cbs = shift || {};
     my @raw = $self->getHelpRaw;
 
     require Text::Table;
@@ -1078,8 +1129,9 @@ sub getHelpWrap
         my $opt = join ",\n  ", @{$param->{param}};
         my $txt = shift;
         no warnings 'uninitialized';
-        $txt .= "\n Current Value: [" . $param->{default} . "]" if exists $param->{default};
-        $txt .= "\n Valid values: [" . join (',', @{$param->{valid_values}}) . "]" if $param->{valid_values};
+
+        $txt .= "\n " . ($cbs->{current_value} || sub { "Current value: [". shift(). "]" })->($param->{default}) if exists $param->{default};
+        $txt .= "\n " . ($cbs->{valid_values} || sub { "Valid values: [". join(',', @_). "]" })->(@{$param->{valid_values}}) if $param->{valid_values};
 
         $tb->add($opt, $txt);
     };

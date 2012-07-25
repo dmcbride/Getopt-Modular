@@ -39,7 +39,7 @@ SKIP: {
     my $help = GM->getHelp();
     like("$help", qr/helpful foo/);
     like("$help", qr/\[on\]/);
-    like("$help", qr/nofoo.*Current\s+Value/);
+    like("$help", qr/nofoo.*Current\s+value/);
 };
 
 SKIP: {
