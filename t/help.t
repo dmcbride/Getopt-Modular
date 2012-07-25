@@ -1,4 +1,4 @@
-#!perl -T
+#!perl
 
 use Test::More qw(no_plan); # tests => 1;
 
@@ -46,7 +46,6 @@ SKIP: {
     eval { require Text::Table; require Text::Wrap; 1 } or skip 'Optional modules Text::Table and/or Text::Wrap missing', 7;
 
     my $help = GM->getHelpWrap();
-    diag $help;
     like("$help", qr/helpful foo/);
     like("$help", qr/\[on\]/);
     like("$help", qr/nofoo.*description/);

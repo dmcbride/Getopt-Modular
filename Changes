@@ -2,8 +2,10 @@ Revision history for Getopt-Modular
 
 {{$NEXT}}
         + Add exception types.  Theoretically good for translatability
-          (but you get to handle translations).
+          (but you get to handle translations and catching everything).
         + Add valid_values option
+        + getHelpWrap will use Text::WrapI18N if available, otherwise use
+          Text::Wrap (core).
 
 0.07    June 3, 2011
         * Fix some doc typos, add more explanation on how defaults are dynamic

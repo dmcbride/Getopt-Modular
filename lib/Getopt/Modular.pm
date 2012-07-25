@@ -1036,8 +1036,9 @@ sub getHelp
 
 =head2 getHelpWrap
 
-Similar to getHelp, this uses Text::Wrap to automatically wrap the text
-on for help, making it easier to write.
+Similar to getHelp, this uses L<Text::WrapI18N>, if available, otherwise
+L<Text::Wrap>, to automatically wrap the text on for help, making it easier
+to write.
 
 Default screen width is 80 - you can pass in the columns if you prefer.
 
@@ -1050,7 +1051,24 @@ sub getHelpWrap
     my @raw = $self->getHelpRaw;
 
     require Text::Table;
-    require Text::Wrap;
+
+    my $wrap = eval {
+        require Text::WrapI18N;
+        sub {
+            local $Text::WrapI18N::columns = shift;
+            local $Text::WrapI18N::unexpand;
+
+            Text::WrapI18N::wrap('', '', @_);
+        };
+    } || do {
+        require Text::Wrap;
+        sub {
+            local $Text::Wrap::columns = shift;
+            local $Text::Wrap::unexpand;
+
+            Text::Wrap::wrap('', '', @_);
+        }
+    };
 
     my $tb = Text::Table->new();
     my $load_data = sub {
@@ -1076,13 +1094,11 @@ sub getHelpWrap
         # rebuild, wrapped.
         my @colrange = $tb->colrange(0);
         my $available = $width - $colrange[1];
-        local $Text::Wrap::columns = $available;
-        local $Text::Wrap::unexpand;
 
         $tb->clear();
         for my $param (@raw)
         {
-            my $help = Text::Wrap::wrap('', '', $param->{help});
+            my $help = $wrap->($available, $param->{help});
             $load_data->($tb, $param, $help);
         }
     }
