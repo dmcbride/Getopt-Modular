@@ -1,6 +1,10 @@
 Revision history for Getopt-Modular
 
 {{$NEXT}}
+        + Add "hidden" flag for parameters that should be accepted but
+          not displayed in getHelp/getHelpWrap
+
+0.08    2012-07-24
         + Add exception types.  Theoretically good for translatability
           (but you get to handle translations and catching everything).
         + Add valid_values option

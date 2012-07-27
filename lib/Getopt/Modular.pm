@@ -974,7 +974,7 @@ sub getHelpRaw
         my %opt;
 
         my $param_info = $accept->{$param};
-        my @keys = ($param, @{$param_info->{aliases}});
+        my @keys = ($param, @{$param_info->{aliases}||[]});
 
         # booleans get the "no" version.
         if ($param_info->{spec} =~ /!/)
@@ -1012,6 +1012,9 @@ sub getHelpRaw
             # have what we want anyway.
             $opt{valid_values} = $opt{valid_values}->();
         };
+
+        # is it hidden?  It's still part of the raw output.
+        $opt{hidden} = $param_info->{hidden} if exists $param_info->{hidden};
 
         push @raw, \%opt;
     }
@@ -1054,7 +1057,7 @@ Receives all valid values.
 sub getHelp
 {
     my $self = _self_or_global(\@_);
-    my @raw = $self->getHelpRaw;
+    my @raw = grep { not $_->{hidden} } $self->getHelpRaw;
     my $cbs = shift || {};
 
     require Text::Table;
@@ -1099,7 +1102,7 @@ sub getHelpWrap
     my $self = _self_or_global(\@_);
     my $width = (@_ && not ref $_[0]) ? shift : 80;
     my $cbs = shift || {};
-    my @raw = $self->getHelpRaw;
+    my @raw = grep { not $_->{hidden} } $self->getHelpRaw;
 
     require Text::Table;
 
