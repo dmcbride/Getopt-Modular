@@ -517,6 +517,12 @@ passed in on the command line.  If you have no default and your validate
 rejects an empty value, this can, in effect, make the parameter mandatory for
 the user.
 
+=item hidden
+
+If this is set to a true value, then C<getHelp> and C<getHelpWrap>,
+but not C<getHelpRaw>, will not return this item in its output.  Useful
+for debugging or other "internal" parameters.
+
 =back
 
 =cut
