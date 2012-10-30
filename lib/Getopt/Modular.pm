@@ -1137,10 +1137,16 @@ sub getHelpWrap
 
         my $opt = join ",\n  ", @{$param->{param}};
         my $txt = shift;
+
+        my $available = shift;
+
         no warnings 'uninitialized';
 
         $txt .= "\n " . ($cbs->{current_value} || sub { "Current value: [". shift(). "]" })->($param->{default}) if exists $param->{default};
         $txt .= "\n " . ($cbs->{valid_values} || sub { "Valid values: [". join(',', @_). "]" })->(@{$param->{valid_values}}) if $param->{valid_values};
+
+        # wrap all lines
+        $txt = $wrap->($available, $txt) if $available;
 
         $tb->add($opt, $txt);
     };
@@ -1154,17 +1160,20 @@ sub getHelpWrap
     {
         # rebuild, wrapped.
         my @colrange = $tb->colrange(0);
-        my $available = $width - $colrange[1];
+        my $available = $width - $colrange[1] - 1; # 1 for extra space between columns
 
         $tb->clear();
         for my $param (@raw)
         {
-            my $help = $wrap->($available, $param->{help});
-            $load_data->($tb, $param, $help);
+            $load_data->($tb, $param, $param->{help}, $available);
         }
     }
 
-    $tb;
+    # if the current value or valid values are a block of text too long, we don't want all
+    # lines to be too long, so clobber the extra spaces that Text::Table puts in at the end.
+    (my $txt = "".$tb) =~ s/\s+$//msg;
+    $txt .= "\n";
+    $txt;
 }
 
 =head1 EXCEPTIONS
