@@ -1,6 +1,10 @@
 Revision history for Getopt-Modular
 
 {{$NEXT}}
+        ! missing 'valid' field for valid_value exceptions
+        ! Valid values in help expected array ref instead of array, fixed.
+
+0.10    2012-10-30
         + Remove extra spaces at the end of getHelpWrap that Text:Table
           puts in, in case one line is too long for the screen, no need for
           all lines to be too long for the screen.

@@ -11,7 +11,7 @@ use Scalar::Util qw(reftype looks_like_number);
 use Exception::Class
     'Getopt::Modular::Exception' => {
         description => 'Exception in commandline parsing/handling',
-        fields => [ qw(type option value warning) ],
+        fields => [ qw(type option value warning valid) ],
     },
     'Getopt::Modular::Internal' => {
         description => 'Internal Exception in commandline parsing/handling',
@@ -1016,7 +1016,7 @@ sub getHelpRaw
             no warnings;
             # if it's not a code ref, the eval will exit, but we'll already
             # have what we want anyway.
-            $opt{valid_values} = $opt{valid_values}->();
+            $opt{valid_values} = [ $opt{valid_values}->() ];
         };
 
         # is it hidden?  It's still part of the raw output.
