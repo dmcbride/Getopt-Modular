@@ -3,6 +3,10 @@ Revision history for Getopt-Modular
 {{$NEXT}}
         ! missing 'valid' field for valid_value exceptions
         ! Valid values in help expected array ref instead of array, fixed.
+        + Add optional hash-ref parameter to parseArgs to return all the
+          arguments, whether set or by default or whatever.  Not recommended
+          for new code, but may make using this in apps that already use
+          Getopt::Long easier as a shim for conversion.
 
 0.10    2012-10-30
         + Remove extra spaces at the end of getHelpWrap that Text:Table
