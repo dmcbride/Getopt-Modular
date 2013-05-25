@@ -68,4 +68,5 @@ do {
     dies_ok {GM->parseArgs()} 'rejects unaccepted parameter';
     my $e = Exception::Class->caught();
     like($e->message(), qr/Bad command-line/, 'Checking error') or diag explain $e;
+    is($e->type(), 'getopt-long-failure', "Right exception type");
 };

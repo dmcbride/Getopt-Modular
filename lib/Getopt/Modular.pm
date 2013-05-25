@@ -11,7 +11,7 @@ use Scalar::Util qw(reftype looks_like_number);
 use Exception::Class
     'Getopt::Modular::Exception' => {
         description => 'Exception in commandline parsing/handling',
-        fields => [ qw(type option value warning valid) ],
+        fields => [ qw(type option value warning valid expected) ],
     },
     'Getopt::Modular::Internal' => {
         description => 'Internal Exception in commandline parsing/handling',
@@ -617,6 +617,21 @@ sub unacceptParam
 Once all parameters have been accepted (and, possibly, unaccepted), you must
 call parseArgs to perform the actual parsing.
 
+Optionally, if you pass in a hash ref, it will be populated with every
+parameter.  This is intended to provide a stop-gap for migration from
+L<Getopt::Long>::GetOptions wherein you can provide your options hash
+and use that directly.
+
+    GM->parseArgs(\my %opts);
+
+The downside to this is that it will determine all values during parsing
+rather than deferring until the value is actually required.  Most of the
+time, this will be okay, but if some defaults take a long time to resolve
+or validate, e.g., network activities such as looking up users via LDAP,
+requesting a value from a wiki page, or even just reading a file over NFS,
+sshfs, Samba, or similar, that time will be wasted if the value isn't actually
+required during this execution based on other parameters.
+
 =cut
 
 sub parseArgs
@@ -664,6 +679,16 @@ sub parseArgs
         {
             # setting via default.
             $self->getOpt($opt);
+        }
+    }
+
+    # if passed in a hash ref to populate, fill it.
+    if (@_ && ref $_[0] eq 'HASH')
+    {
+        my $opts = shift;
+        for my $opt (keys %{$self->{accept_opts}})
+        {
+            $opts->{$opt} = $self->getOpt($opt);
         }
     }
 }
@@ -720,7 +745,10 @@ sub getOpt
     {
         if (wantarray)
         {
-            return ref $self->{options}{$opt} ? @{$self->{options}{$opt}} : $self->{options}{$opt};
+            return 
+                ref $self->{options}{$opt} eq 'ARRAY' ? @{$self->{options}{$opt}} : 
+                ref $self->{options}{$opt} eq 'HASH'  ? %{$self->{options}{$opt}} : 
+            $self->{options}{$opt};
         }
         return $self->{options}{$opt}
     }
@@ -758,7 +786,7 @@ sub _bool_val
 sub _int_val
 {
     my ($opt,$val) = @_;
-    if ($val =~ /\D/)
+    if ($val !~ /^[-+]?\d+$/)
     {
         Getopt::Modular::Exception->throw(
                                           message => "Trying to set '$opt' (an integer-only parameter) to '$val'",
@@ -909,7 +937,7 @@ sub setOpt
                                               ($self->_getType($opt) || 'SCALAR') .
                                               " got: " . (reftype $_[0] || 'SCALAR'),
                                               expected => ($self->_getType($opt) || 'SCALAR'),
-                                              opt => $opt,
+                                              option => $opt,
                                               value => $_[0],
                                              )
                 unless $self->_getType($opt) eq reftype $_[0];
