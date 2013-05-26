@@ -1,6 +1,8 @@
 Revision history for Getopt-Modular
 
 {{$NEXT}}
+
+0.11    2013-05-25
         ! missing 'valid' field for valid_value exceptions
         ! Valid values in help expected array ref instead of array, fixed.
         + Add optional hash-ref parameter to parseArgs to return all the
