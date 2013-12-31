@@ -17,7 +17,7 @@ GM->acceptParam(
                 'zoo|Z' => {
                     spec => '=s',
                     help => qq[zoo],
-                    valid_values => [ qw/abbc bccd cdde/ ],
+                    valid_values => sub { qw/abbc bccd cdde/ },
                 },
                 'bar|b' => {
                     spec => '!',

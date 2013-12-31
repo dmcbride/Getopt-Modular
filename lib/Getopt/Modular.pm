@@ -259,7 +259,7 @@ sub _self_or_global
     eval { ref $self && $self->isa(__PACKAGE__) } && return shift @$underscore;
 
     # passed in via class method?  skip it.
-    eval { not ref && $self->isa(__PACKAGE__) } && shift @$underscore;
+    eval { not ref $self && $self->isa(__PACKAGE__) } && shift @$underscore;
 
     # have global? use it.
     $global ? $global :
