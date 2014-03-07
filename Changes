@@ -1,6 +1,7 @@
 Revision history for Getopt-Modular
 
 {{$NEXT}}
+        + Allow valid_values to take a sub to defer the list creation
 
 0.12    2014-01-06
         ! Missing proper check for subtypes	

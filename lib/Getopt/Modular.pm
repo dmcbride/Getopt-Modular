@@ -1104,7 +1104,13 @@ sub getHelp
         no warnings 'uninitialized';
 
         $txt .= "\n " . ($cbs->{current_value} || sub { "Current value: [". shift(). "]" })->($param->{default}) if exists $param->{default};
-        $txt .= "\n " . ($cbs->{valid_values} || sub { "Valid values: [". join(',', @_). "]" })->(@{$param->{valid_values}}) if $param->{valid_values};
+
+        if ($param->{valid_values})
+        {
+            # if it's a code ref, de-ref it.  If not, ignore the exception.
+            eval { $param->{valid_values} = [ $param->{valid_values}->() ] };
+            $txt .= "\n " . ($cbs->{valid_values} || sub { "Valid values: [". join(',', @_). "]" })->(@{$param->{valid_values}});
+        }
 
         $tb->add($opt, $txt);
     }

@@ -17,6 +17,11 @@ GM->acceptParam(
                     help => qq[zoo],
                     valid_values => [ qw/abbc bccd cdde/ ],
                 },
+                'zed' => {
+                    spec => '=s',
+                    help => 'zed',
+                    valid_values => sub { qw/ one two three / },
+                },
                 'bar|b' => {
                     spec => '!',
                     help => qq[helpful bar that has a really nice, long annoying run-on boring description],
@@ -33,5 +38,6 @@ my $help = GM->getHelp(
                       );
 like($help, qr/XYZ abbcbccdcdde/);
 like($help, qr/ABC yum/);
+like($help, qr/XYZ onetwothree/);
 
 done_testing();
